@@ -13,6 +13,6 @@ setup(
     url='http://www.github.com/dcramer/py-wikimarkup/',
     zip_safe=False,
     include_package_data=True,
-    install_requires=['bleach'],
+    install_requires=['bleach>=1.1.4'],
     package_data = { '': ['README.rst'] },
 )
