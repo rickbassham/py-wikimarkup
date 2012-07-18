@@ -23,6 +23,8 @@ from base64 import b64encode, b64decode
 
 import bleach
 
+from html5lib.tokenizer import HTMLTokenizer
+
 # a few patterns we use later
 
 MW_COLON_STATE_TEXT = 0
@@ -1711,7 +1713,7 @@ class Parser(BaseParser):
         if utf8:
             text.encode("utf-8")
         # Pass output through bleach and linkify
-        text = bleach.linkify(text, nofollow=nofollow)
+        text = bleach.linkify(text, nofollow=nofollow, tokenizer=HTMLTokenizer)
         return bleach.clean(text, tags=self.tags, attributes=attributes,
                             styles=styles, strip_comments=False)
 
