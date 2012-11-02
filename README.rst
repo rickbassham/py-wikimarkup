@@ -10,13 +10,14 @@ Usage
 
 To return HTML from Wiki::
 
-    from wikimarkup import parse
+    from wikimarkup.parser import Parser
 
-    html = parse(text[, show_toc=True])
+    parser = Parser()
+    html = parser.parse(text[, show_toc=True])
 
 To return HTML without certain "annoying" (TODO: define annoying) elements, such as headings::
 
-    from wikimarkup import parselite
+    from wikimarkup.parser import parselite
 
     parselite(text)
 
@@ -26,7 +27,7 @@ Adding New Tags
 
 You can add new tags with the `registerTagHook` method.::
 
-    from wikimarkup import registerTagHook, parse
+    from wikimarkup.parser import Parser
     import cgi
     
     def blockquoteTagHook(parser_env, body, attributes={}):
@@ -38,7 +39,8 @@ You can add new tags with the `registerTagHook` method.::
         text.append('</blockquote>')
         return u'\n'.join(text)
 
-    registerTagHook('quote', blockquoteTagHook)
+    parser = Parser()
+    parser.registerTagHook('quote', blockquoteTagHook)
 
 
 Adding Internal Links
@@ -54,16 +56,16 @@ with 'None' for unprefixed links::
         ...
         return replacement
 
-    registerInternalLinkHook(None, internalLinkHook)  # called for [[link]]
-    registerInternalLinkHook('Wikipedia', hook)       # called for [[Wikipedia: Link]]
-    registerInternalLinkHook(':en', hook)             # called for [[:en:link]
-    registerInternalLinkHook(':', hook)               # called for [[:any:link]]
-    registerInternalLinkHook('*', hook)               # called for [[anything]]
+    parser.registerInternalLinkHook(None, internalLinkHook)  # called for [[link]]
+    parser.registerInternalLinkHook('Wikipedia', hook)       # called for [[Wikipedia: Link]]
+    parser.registerInternalLinkHook(':en', hook)             # called for [[:en:link]
+    parser.registerInternalLinkHook(':', hook)               # called for [[:any:link]]
+    parser.registerInternalLinkHook('*', hook)               # called for [[anything]]
 
 
 Examples::
 
-    from wikimarkup import parse, registerInternalLinkHook
+    from wikimarkup.parser import Parser
 
     def wikipediaLinkHook(parser_env, namespace, body):
         # namespace is going to be 'Wikipedia'
@@ -72,10 +74,11 @@ Examples::
         text = (text or article).strip()
         return '<a href="http://en.wikipedia.org/wiki/%s">%s</a>' % (href, text)
 
-    registerInternalLinkHook('Wikipedia', wikipediaLinkHook)
+    parser = Parser()
+    parser.registerInternalLinkHook('Wikipedia', wikipediaLinkHook)
 
-    print parse("[[Wikipedia:public transport|public transportation]]")
-    print parse("[[Wikipedia: bus]]")
+    print parser.parse("[[Wikipedia:public transport|public transportation]]")
+    print parser.parse("[[Wikipedia: bus]]")
 
     import settings
     from pytils.translit import slugify
@@ -92,6 +95,6 @@ Examples::
             href = '#'
         return '<a href="%s">%s</a>' % (href, text)
 
-    registerInternalLinkHook(None, byteflowLinkHook)
+    parser.registerInternalLinkHook(None, byteflowLinkHook)
 
-    parse("[[Blog post title]]")
+    parser.parse("[[Blog post title]]")
