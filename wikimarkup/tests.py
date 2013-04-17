@@ -95,7 +95,7 @@ class WikimarkupTestCase(unittest.TestCase):
 
         text = "* hello\n* world\n# list\n* fun\n** isnt it\n*# yep"
         self.assertEquals(parse(text), '<ul><li> hello\n</li><li> world\n</li></ul>\n<ol><li> list\n</li></ol>\n<ul><li> fun\n<ul><li> isnt it\n</li></ul>\n<ol><li> yep\n</li></ol>\n</li></ul>')
-    
+
     def testMixed(self):
         """
         Test many formatting methods together
@@ -104,19 +104,22 @@ class WikimarkupTestCase(unittest.TestCase):
         assumed = '<div id="toc"><h2>Table of Contents</h2><ul><li class="toclevel-1"><a href="#w_my-heading"><span class="tocnumber">1</span> <span class="toctext">My Heading</span></a><ul><li class="toclevel-2"><a href="#w_subheading"><span class="tocnumber">1.1</span> <span class="toctext">Subheading</span></a></li><li class="toclevel-2"><a href="#w_show-me-a-toc"><span class="tocnumber">1.2</span> <span class="toctext">show me a toc</span></a><ul><li class="toclevel-3"><a href="#w_pretty-please"><span class="tocnumber">1.2.1</span> <span class="toctext">pretty please</span></a></li></ul></li></ul></li></ul></div><h1 id="w_my-heading">My Heading</h1>\n<ul><li> here\n</li><li> is\n</li><li> a\n</li><li> <a href="http://mydomain.com">list</a>\n</li></ul>\n<h2 id="w_subheading">Subheading</h2>\n<h2 id="w_show-me-a-toc">show me a toc</h2>\n<h3 id="w_pretty-please">pretty please</h3>'
         self.assertEquals(parse(text), assumed)
 
-    def testCommentsRemoved(self):
+    def testCommentsNotRemoved(self):
         """
         Comments are removed.
         """
         text = '<!-- This is a comment. -->'
-        assumed = '<p>\n</p>'
+        assumed = '<p><!-- This is a comment. -->\n</p>'
         self.assertEquals(parse(text), assumed)
 
         text = ('<!-- Comment\n\n\n= Heading =\n'
                 'Firefox has <em>hidden</em> <!-- <strong>settings</strong>\n'
-                 'more \n-->\n\n# follow\n# by\n\n= Another heading =')
-        assumed =  ('<p>\n</p>\n<ol><li> follow\n</li><li> by\n</li></ol>\n'
-                    '<h1 id="w_another-heading">Another heading</h1>')
+                'more \n-->\n\n# follow\n# by\n\n= Another heading =')
+        assumed =  ('<p><!-- Comment\n</p><p><br />\n</p>\n'
+                    '<h1 id="w_heading">Heading</h1>\n<p>Firefox has '
+                    '<em>hidden</em> <!-- <strong>settings</strong>\nmore \n'
+                    '--&gt;\n</p>\n<ol><li> follow\n</li><li> by\n</li></ol>'
+                    '\n<h1 id="w_another-heading">Another heading</h1>--></p>')
         self.assertEquals(parse(text), assumed)
 
     def testLessThanBracket(self):
@@ -142,7 +145,7 @@ class WikimarkupTestCase(unittest.TestCase):
         text = '< <script type="text/javascript">alert("evil")</script>'
         assumed = '<p>&lt; &lt;script type="text/javascript"&gt;alert("evil")&lt;/script&gt;\n</p>'
         self.assertEquals(parse(text), assumed)
-        
+
         text = '<> <a href="javascript:alert(\'boo!\')">click here</a>'
         assumed = '<p>&lt;&gt; &lt;a href="javascript:alert(\'boo!\')"&gt;click here&lt;/a&gt;\n</p>'
         self.assertEquals(parse(text), assumed)
@@ -160,7 +163,7 @@ class WikimarkupTestCase(unittest.TestCase):
         self.assertEquals(parse(text), assumed)
 
         text= '<-script --><!-- foo-->>alert("hi")</script>'
-        assumed = '<p>&lt;-script --&gt;&gt;alert("hi")&lt;/script&gt;\n</p>'
+        assumed = '<p>&lt;-script --&gt;<!-- foo-->&gt;alert("hi")&lt;/script&gt;\n</p>'
         self.assertEquals(parse(text), assumed)
 
         text='<script <->alert("foo");</script>'
