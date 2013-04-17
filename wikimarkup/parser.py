@@ -1713,7 +1713,11 @@ class Parser(BaseParser):
         if utf8:
             text.encode("utf-8")
         # Pass output through bleach and linkify
-        text = bleach.linkify(text, nofollow=nofollow, tokenizer=HTMLTokenizer)
+        if nofollow:
+            callbacks = [bleach.linkify_callbacks.nofollow]
+        else:
+            callbacks = []
+        text = bleach.linkify(text, callbacks=callbacks, tokenizer=HTMLTokenizer)
         return bleach.clean(text, tags=self.tags, attributes=attributes,
                             styles=styles, strip_comments=False)
 
