@@ -1719,7 +1719,7 @@ class Parser(BaseParser):
             callbacks = []
         text = bleach.linkify(text, callbacks=callbacks, tokenizer=HTMLTokenizer)
         return bleach.clean(text, tags=self.tags, attributes=attributes,
-                            styles=styles, strip_comments=False)
+                            styles=styles, strip_comments=strip_comments)
 
     def checkTOC(self, text):
         if text.find(u"__NOTOC__") != -1:
