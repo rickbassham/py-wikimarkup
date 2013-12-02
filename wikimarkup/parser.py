@@ -23,8 +23,6 @@ from base64 import b64encode, b64decode
 
 import bleach
 
-from html5lib.tokenizer import HTMLTokenizer
-
 # a few patterns we use later
 
 MW_COLON_STATE_TEXT = 0
@@ -454,6 +452,7 @@ class BaseParser(object):
         self.tagHooks = {}
         # [[internal link]] hooks
         self.internalLinkHooks = {}
+        self.templateHooks = {}
 
     #def __del__(self):
     #    if not self.keep_env:
@@ -479,6 +478,17 @@ class BaseParser(object):
         parser.registerInternalLinkHook('*', internalLinkHook)  # called for [[anything]] not hooked above
         """
         self.internalLinkHooks[tag] = function
+
+    def registerTemplateHook(self, tag, function):
+        """
+        Register a hook called for {{templates}}.  There is no default
+        handling for internal links.
+
+        def templateHook(template_name, parameter):
+        ...
+        return replacement
+        """
+        self.templateHooks[tag] = function
 
     #def store_object(self, namespace, key, value=True):
     #    """
@@ -1135,6 +1145,76 @@ class BaseParser(object):
                 i += 2
         return ''.join(sb)
 
+    def replaceTemplate(self, text):
+        re_bracket = re.compile(r'{{|}}')
+        processed = 0
+
+        def findTemplate(processed=0):
+            nest = 0
+            start = 0
+            end = 0
+            while True:
+                m = re_bracket.search(text, processed)
+                if not m:
+                    return None
+                if m.group()=='{{':
+                    if nest==0:
+                        start = m.start()
+                    nest += 1
+                else:
+                    nest -= 1
+                    if nest==0:
+                        end = m.start()
+                        break
+                processed = m.end()
+            return (start, end)
+
+        def add_param(params, i, val):
+            param = val.split('=', 2)
+            if len(param)==1:
+                params[i] = param[0]
+            else:
+                params[i] = param[1]
+                params[param[0]] = param[1]
+
+        while True:
+            # Find Template
+            pos = findTemplate(processed)
+            if not pos:
+                break
+            start, end = pos
+            pre = text[0:start]
+            post = text[end+2:]
+            template = text[start+2:end]
+
+            #Parse Parameters
+            params = template.split('|')
+            template_name = params[0]
+            p = {}
+            param = []
+
+            i = 1
+            for v in params[1:]:
+                param.append(v)
+                val = '|'.join(param)
+                if val.count('{')==val.count('}') and val.count('[')==val.count(']'):
+                    add_param(p, i, val)
+                    i += 1
+                    param = []
+            if len(param)>0:
+                val = '|'.join(param)
+                add_param(p, i, val)
+
+            #Template
+            hook = self.templateHooks.get(template_name, None) or self.templateHooks.get('*', None)
+            if hook:
+                res = hook(self, template_name, p)
+                text = pre + res + post
+                processed = start
+            else:
+                processed = end+2
+        return text
+
     # TODO: fix this so it actually works
     def replaceFreeExternalLinks(self, text):
         bits = _protocolPat.split(text)
@@ -1295,9 +1375,9 @@ class BaseParser(object):
 
             if close == u'/>':
                 # empty element tag, <tag />
-                content = None
+                content = ''
                 text = inside
-                tail = None
+                tail = ''
             else:
                 if element == u'!--':
                     end = _endCommentPat
@@ -1314,11 +1394,6 @@ class BaseParser(object):
                 else:
                     tail = q[1]
                     text = q[2]
-
-            if content is None:
-                content = ''
-            if tail is None:
-                tail = ''
 
             matches[marker] = (
                 element,
@@ -1695,6 +1770,7 @@ class Parser(BaseParser):
 
         text = self.strip(text, stripcomments=strip_comments)
         text = self.removeHtmlTags(text)
+        text = self.replaceTemplate(text)
         if self.base_url:
             text = self.replaceVariables(text)
         text = self.doTableStuff(text)
@@ -1718,13 +1794,9 @@ class Parser(BaseParser):
         if utf8:
             text.encode("utf-8")
         # Pass output through bleach and linkify
-        if nofollow:
-            callbacks = [bleach.linkify_callbacks.nofollow]
-        else:
-            callbacks = []
-        text = bleach.linkify(text, callbacks=callbacks, tokenizer=HTMLTokenizer)
+        text = bleach.linkify(text)
         return bleach.clean(text, tags=self.tags, attributes=attributes,
-                            styles=styles, strip_comments=strip_comments)
+                            styles=styles, strip_comments=False)
 
     def checkTOC(self, text):
         if text.find(u"__NOTOC__") != -1:
@@ -2298,11 +2370,11 @@ class Parser(BaseParser):
             return full
 
 def parse(text, show_toc=True, tags=ALLOWED_TAGS,
-          attributes=ALLOWED_ATTRIBUTES, nofollow=False):
+          attributes=ALLOWED_ATTRIBUTES, nofollow=False, strip_comments=False):
     """Returns HTML from MediaWiki markup"""
     p = Parser()
     return p.parse(text, show_toc=show_toc, tags=tags, attributes=attributes,
-                   nofollow=nofollow)
+                   nofollow=nofollow, strip_comments=strip_comments)
 
 def parselite(text):
     """Returns HTML from MediaWiki markup ignoring
