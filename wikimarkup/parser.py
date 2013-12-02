@@ -1315,6 +1315,11 @@ class BaseParser(object):
                     tail = q[1]
                     text = q[2]
 
+            if content is None:
+                content = ''
+            if tail is None:
+                tail = ''
+
             matches[marker] = (
                 element,
                 content,
